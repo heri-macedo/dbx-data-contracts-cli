@@ -1,0 +1,54 @@
+contract:
+  name: test_table_2_v1
+  version: 1.0.0
+  status: active
+
+catalog: test_catalog
+schema: test_schema
+
+ownership:
+  data_owner: Data Owner
+  bds: BDS
+  tds: TDS
+  purview_collection: TestCollection
+  portfolio: Portfolio_2
+  sub_domain: Sub_Domain_2
+  business_description: Test business description for table 2.
+
+table:
+  name: table_name_2
+  description: Test details and status
+  refresh_frequency: daily
+  retention_days: 90
+
+  tags:
+    layer: Silver
+    classification: Classification_2
+
+  columns:
+    - name: order_id
+      type: string
+      description: Unique order identifier
+      nullable: false
+
+    - name: customer_id
+      type: string
+      description: Customer identifier
+      nullable: false
+      tags:
+        privacy: PII_ENCRYPTED
+
+    - name: order_date
+      type: date
+      description: Date when the order was placed
+      nullable: false
+
+    - name: order_amount
+      type: decimal(18,2)
+      description: Total order value
+      nullable: false
+
+source:
+  type: database
+  name: test_source_system
+  database: test_database

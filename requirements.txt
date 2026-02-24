@@ -1,0 +1,10 @@
+pydantic==2.11.10
+pydantic-settings==2.12.0
+PyYAML==6.0.3
+typer==0.16.1
+rich==13.9.4
+databricks-sdk==0.63.0
+databricks-bundles==0.281.0
+azure-identity==1.17.1
+azure-purview-catalog==1.0.0b4
+azure-purview-administration==1.0.0b1

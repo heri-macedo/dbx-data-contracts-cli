@@ -1,0 +1,35 @@
+# =============================================================================
+# DATA CONTRACT CONFIG
+# =============================================================================
+# Configuration file for the contracts repository.
+# Place this at the root of your team's repository.
+#
+# Name composition:
+#   - catalog = domain.name + environments.{env}.catalog_suffix
+#   - schema  = domain.sub_domain
+#
+# Example:
+#   dev:  test_catalog.test_schema.table_name
+#   prod: test_catalog_prod.test_schema.table_name
+# =============================================================================
+
+# Domain identification (required)
+domain:
+  name: "test_catalog"               # Catalog base (Unity Catalog)
+  sub_domain: "test_schema"          # Schema (Unity Catalog)
+  description: "Test Domain"         # Description for documentation
+
+# Environment-specific configurations
+environments:
+  dev:
+    catalog_suffix: ""               # dev: catalog = "test_catalog"
+  prod:
+    catalog_suffix: "_prod"          # prod: catalog = "test_catalog_prod"
+
+# Default ownership (optional - can be overridden per contract)
+ownership:
+  data_owner: "Test Team"
+  bds: "BDS User"
+  tds: "TDS User"
+  purview_collection: "Test Collection"
+

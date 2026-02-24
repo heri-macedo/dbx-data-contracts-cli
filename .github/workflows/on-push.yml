@@ -1,0 +1,196 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+concurrency:
+  group: deploy-${{ github.ref_name }}  # deploy-main or deploy-develop
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: '3.11'
+  WHEEL_VOLUME_PATH: 'dbfs:/Volumes/shared/lib/wheels'
+  DATABRICKS_CLI_VERSION: '0.288.0'
+
+jobs:
+  # ===========================================================================
+  # Lint & Format Check
+  # ===========================================================================
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.dev.txt
+
+      - name: Run lint
+        run: make lint
+
+  # ===========================================================================
+  # Tests
+  # ===========================================================================
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements.dev.txt
+          pip install -e .
+
+      - name: Run tests
+        run: make test
+
+  # ===========================================================================
+  # Validate Bundle
+  # ===========================================================================
+  validate:
+    name: Validate Bundle
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    environment: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+    outputs:
+      target: ${{ steps.setup-creds.outputs.target }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Setup Databricks CLI
+        uses: databricks/setup-cli@main
+        with:
+          version: ${{ env.DATABRICKS_CLI_VERSION }}
+
+      - name: Setup Databricks Credentials
+        id: setup-creds
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "🔐 Configuring PROD credentials..."
+            echo "target=prod" >> $GITHUB_OUTPUT
+            echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_HOST_PROD }}" >> $GITHUB_ENV
+            echo "DATABRICKS_CLIENT_ID=${{ secrets.DATABRICKS_SP_CLIENT_ID_PROD }}" >> $GITHUB_ENV
+            echo "DATABRICKS_CLIENT_SECRET=${{ secrets.DATABRICKS_SP_SECRET_PROD }}" >> $GITHUB_ENV
+          else
+            echo "🔐 Configuring DEV credentials..."
+            echo "target=dev" >> $GITHUB_OUTPUT
+            echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_HOST_DEV }}" >> $GITHUB_ENV
+            echo "DATABRICKS_CLIENT_ID=${{ secrets.DATABRICKS_SP_CLIENT_ID_DEV }}" >> $GITHUB_ENV
+            echo "DATABRICKS_CLIENT_SECRET=${{ secrets.DATABRICKS_SP_SECRET_DEV }}" >> $GITHUB_ENV
+          fi
+
+      - name: Validate bundle
+        run: |
+          echo "🔍 Validating bundle for target: ${{ steps.setup-creds.outputs.target }}"
+          databricks bundle validate -t ${{ steps.setup-creds.outputs.target }}
+          echo "✅ Bundle validation passed!"
+
+  # ===========================================================================
+  # Build & Deploy
+  # ===========================================================================
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: [validate]
+    environment: ${{ needs.validate.outputs.target }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Setup Databricks CLI
+        uses: databricks/setup-cli@main
+        with:
+          version: ${{ env.DATABRICKS_CLI_VERSION }}
+
+      - name: Setup Credentials
+        run: |
+          if [[ "${{ needs.validate.outputs.target }}" == "prod" ]]; then
+            echo "🔐 Configuring PROD credentials..."
+            # Databricks
+            echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_HOST_PROD }}" >> $GITHUB_ENV
+            echo "DATABRICKS_CLIENT_ID=${{ secrets.DATABRICKS_SP_CLIENT_ID_PROD }}" >> $GITHUB_ENV
+            echo "DATABRICKS_CLIENT_SECRET=${{ secrets.DATABRICKS_SP_SECRET_PROD }}" >> $GITHUB_ENV
+          else
+            echo "🔐 Configuring DEV credentials..."
+            # Databricks
+            echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_HOST_DEV }}" >> $GITHUB_ENV
+            echo "DATABRICKS_CLIENT_ID=${{ secrets.DATABRICKS_SP_CLIENT_ID_DEV }}" >> $GITHUB_ENV
+            echo "DATABRICKS_CLIENT_SECRET=${{ secrets.DATABRICKS_SP_SECRET_DEV }}" >> $GITHUB_ENV
+          fi
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt build
+          pip install -e .
+
+      - name: Set dev version
+        if: github.ref == 'refs/heads/develop'
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          BASE_VERSION=${LAST_TAG#v}
+          echo "SETUPTOOLS_SCM_PRETEND_VERSION=${BASE_VERSION}.dev0" >> $GITHUB_ENV
+          echo "📌 Dev version pinned to ${BASE_VERSION}.dev0"
+
+      - name: Build wheel
+        if: github.ref == 'refs/heads/develop'
+        id: build-wheel
+        run: |
+          echo "🔨 Building dev wheel (version: $SETUPTOOLS_SCM_PRETEND_VERSION)..."
+          python -m build --wheel
+          
+          WHEEL_FILE=$(ls dist/*.whl | head -1)
+          echo "wheel_path=$WHEEL_FILE" >> $GITHUB_OUTPUT
+          echo "wheel_name=$(basename $WHEEL_FILE)" >> $GITHUB_OUTPUT
+          echo "✅ Wheel built: $(basename $WHEEL_FILE)"
+
+      - name: Deploy Bundle
+        run: |
+          TARGET="${{ needs.validate.outputs.target }}"
+          echo "🚀 Deploying bundle to $TARGET..."
+          databricks bundle deploy -t $TARGET
+          echo "✅ Bundle deployed!"
+
+      - name: Publish wheel to UC Volume
+        if: github.ref == 'refs/heads/develop'
+        run: |
+          WHEEL_FILE="${{ steps.build-wheel.outputs.wheel_path }}"
+          WHEEL_NAME="${{ steps.build-wheel.outputs.wheel_name }}"
+          
+          echo "📦 Publishing dev wheel to UC Volume..."
+          databricks fs cp "$WHEEL_FILE" "${{ env.WHEEL_VOLUME_PATH }}/$WHEEL_NAME" --overwrite
+          
+          echo ""
+          echo "✅ Wheel published!"
+          echo "📍 ${{ env.WHEEL_VOLUME_PATH }}/$WHEEL_NAME"

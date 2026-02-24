@@ -1,0 +1,169 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: deploy-main  # Same as on-push main (both deploy to prod)
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: '3.11'
+  # Unity Catalog Volume path for production wheels (dbfs: prefix required for CLI)
+  WHEEL_VOLUME_PATH: dbfs:/Volumes/shared/lib/wheels
+
+jobs:
+  # ===========================================================================
+  # Release - Build, Deploy & Publish
+  # ===========================================================================
+  release:
+    name: Build, Deploy & Release
+    runs-on: ubuntu-latest
+    environment: prod
+    permissions:
+      contents: write  # Required to create GitHub releases
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST_PROD }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_SP_CLIENT_ID_PROD }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_SP_SECRET_PROD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required for setuptools-scm
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Setup Databricks CLI
+        uses: databricks/setup-cli@main
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements.dev.txt
+          pip install -e .
+          pip install build
+
+      - name: Get version from tag
+        id: version
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Tag version: $TAG_VERSION"
+
+      - name: Validate
+        run: |
+          echo "🔍 Running validation..."
+          make lint
+          make test
+          databricks-contracts --help
+          echo "✅ Validation passed!"
+
+      - name: Build wheel
+        run: |
+          echo "🔨 Building wheel..."
+          python -m build --wheel
+          
+          WHEEL_FILE=$(ls dist/*.whl)
+          echo "WHEEL_FILE=$WHEEL_FILE" >> $GITHUB_ENV
+          echo "WHEEL_NAME=$(basename $WHEEL_FILE)" >> $GITHUB_ENV
+          echo ""
+          echo "📦 Built: $WHEEL_FILE"
+
+      - name: Deploy Bundle to PROD
+        run: |
+          echo "🚀 Deploying bundle to PROD..."s
+          databricks bundle deploy -t prod
+          echo "✅ Bundle deployed!"
+          
+      - name: Publish wheel to UC Volume
+        run: |
+          echo "📦 Publishing wheel to Unity Catalog Volume..."
+          echo "   Source: ${{ env.WHEEL_FILE }}"
+          echo "   Target: ${{ env.WHEEL_VOLUME_PATH }}/"
+          
+          # Upload versioned wheel
+          databricks fs cp "${{ env.WHEEL_FILE }}" "${{ env.WHEEL_VOLUME_PATH }}/${{ env.WHEEL_NAME }}" --overwrite
+          
+          # Upload as 'latest' for convenience
+          databricks fs cp "${{ env.WHEEL_FILE }}" "${{ env.WHEEL_VOLUME_PATH }}/databricks_contracts-latest-py3-none-any.whl" --overwrite
+          
+          echo ""
+          echo "✅ Wheel published to UC Volume!"
+          echo ""
+          echo "📍 Available at:"
+          echo "   ${{ env.WHEEL_VOLUME_PATH }}/${{ env.WHEEL_NAME }}"
+          echo "   ${{ env.WHEEL_VOLUME_PATH }}/databricks_contracts-latest-py3-none-any.whl"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ github.ref_name }}
+          generate_release_notes: true
+          body: |
+            ## 📦 Installation
+
+            ### Via Unity Catalog Volume (recommended for Databricks Jobs)
+
+            ```yaml
+            # In your databricks.yaml or job config
+            libraries:
+              - whl: ${{ env.WHEEL_VOLUME_PATH }}/databricks_contracts-${{ steps.version.outputs.tag_version }}-py3-none-any.whl
+            ```
+
+            Or use the latest version:
+            ```yaml
+            libraries:
+              - whl: ${{ env.WHEEL_VOLUME_PATH }}/databricks_contracts-latest-py3-none-any.whl
+            ```
+
+            ### Via pip (for local development)
+
+            ```bash
+            # From GitHub release
+            pip install https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/databricks_contracts-${{ steps.version.outputs.tag_version }}-py3-none-any.whl
+
+            # From Git tag
+            pip install git+https://github.com/${{ github.repository }}.git@${{ github.ref_name }}
+            ```
+
+            ### In Databricks Notebook
+
+            ```python
+            %pip install ${{ env.WHEEL_VOLUME_PATH }}/databricks_contracts-${{ steps.version.outputs.tag_version }}-py3-none-any.whl
+            ```
+
+            ## 🔗 Quick Links
+
+            - [Documentation](https://github.com/${{ github.repository }}#readme)
+            - [Changelog](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
+
+          files: dist/*.whl
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## 🎉 Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Version** | ${{ steps.version.outputs.tag_version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Wheel** | \`${{ env.WHEEL_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **UC Volume** | \`${{ env.WHEEL_VOLUME_PATH }}/\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Bundle Target** | prod |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📍 For Clients" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`yaml" >> $GITHUB_STEP_SUMMARY
+          echo "libraries:" >> $GITHUB_STEP_SUMMARY
+          echo "  - whl: ${{ env.WHEEL_VOLUME_PATH }}/${{ env.WHEEL_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

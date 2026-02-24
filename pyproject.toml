@@ -1,0 +1,79 @@
+[project]
+name = "databricks-contracts"
+dynamic = ["version"]
+description = "Deploy data contracts to Databricks Unity Catalog"
+requires-python = ">=3.10"
+readme = "README.md"
+dependencies = [
+    "pydantic==2.11.10",
+    "pydantic-settings==2.12.0",
+    "PyYAML==6.0.3",
+    "typer==0.16.1",
+    "rich==13.9.4",
+    "databricks-sdk==0.63.0",
+    "databricks-bundles==0.281.0",
+    "azure-identity==1.17.1",
+    "azure-purview-catalog==1.0.0b4",
+    "azure-purview-administration==1.0.0b1"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "mypy>=1.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+databricks-contracts = "databricks_contracts.commands.main:app"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+# Version comes from git tags: v1.2.0 → 1.2.0
+# Non-tagged commits get: 1.2.1.dev3 (3 commits after v1.2.0)
+version_scheme = "guess-next-dev"
+local_scheme = "no-local-version"
+tag_regex = "^v(?P<version>\\d+\\.\\d+\\.\\d+)$"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["databricks_contracts*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "yaml"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"
+
+[tool.coverage.run]
+source = ["databricks_contracts"]
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
+fail_under = 30
+show_missing = true

@@ -1,0 +1,51 @@
+contract:
+  name: test_table_1_v1
+  version: 1.1.0
+  status: active
+
+catalog: test_catalog
+schema: test_schema
+
+ownership:
+  data_owner: Data Owner
+  bds: BDS
+  tds: TDS
+  purview_collection: TestCollection
+  portfolio: Portfolio_1
+  sub_domain: Sub_Domain_1
+  business_description: Test business description for table 1
+
+table:
+  name: table_name_1
+  description: Provides core test metrics
+  refresh_frequency: daily
+  retention_days: 30
+
+  tags:
+    layer: Bronze
+    classification: Classification_1
+
+  columns:
+    - name: txn_ref_dt
+      type: date
+      description: The date of the transaction reference
+      nullable: false
+      tags:
+        privacy: PII_HIDDEN
+
+    - name: pmt_txn_id
+      type: string
+      description: Unique identifier for the payment transaction
+      nullable: false
+
+    - name: customer_email
+      type: string
+      description: Email address of the customer
+      nullable: true
+      tags:
+        privacy: PII_ENCRYPTED
+
+source:
+  type: database
+  name: test_source_system
+  database: test_database

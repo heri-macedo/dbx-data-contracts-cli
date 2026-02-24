@@ -1,0 +1,94 @@
+"""
+Statement build result model for DDL generation.
+
+Represents the structured output from BuilderService.
+
+Example:
+    >>> from databricks_contracts.models.results import StatementBuildResult
+    >>> result = builder.build(contract)
+    >>> print(result.create_ddl)
+"""
+
+from pydantic import BaseModel, Field
+
+from databricks_contracts.models.statements import (
+    BaseStatement,
+    CreateTableStatement,
+    GrantStatement,
+    TagStatement,
+)
+
+
+class StatementBuildResult(BaseModel):
+    """
+    Result of building DDL statements from a contract.
+
+    Structured container separating CREATE TABLE, SET TAGS, and GRANT statements.
+
+    Attributes:
+        create_table: The CREATE TABLE statement.
+        tags: List of SET TAGS statements.
+        grant: GRANT statement for Service Principal.
+
+    Example:
+        >>> result = builder.build(contract)
+        >>> print(result.create_ddl)
+        >>> print(result.tags_ddl)
+        >>> executor.execute_batch(result.all_statements)
+    """
+
+    model_config = {"frozen": True}
+
+    create_table: CreateTableStatement = Field(
+        ...,
+        description="CREATE TABLE statement",
+    )
+    tags: list[TagStatement] = Field(
+        default_factory=list,
+        description="SET TAGS statements",
+    )
+    grant: GrantStatement = Field(
+        ...,
+        description="GRANT MODIFY statement for Service Principal",
+    )
+
+    @property
+    def all_statements(self) -> list[BaseStatement]:
+        """
+        All statements in execution order.
+
+        Returns:
+            List with CREATE TABLE, SET TAGS, and GRANT statements.
+
+        Example:
+            >>> executor.execute_batch(result.all_statements)
+        """
+        return [self.create_table, *self.tags, self.grant]
+
+    @property
+    def create_ddl(self) -> str:
+        """
+        CREATE TABLE DDL string.
+
+        Returns:
+            The CREATE TABLE DDL statement.
+
+        Example:
+            >>> print(result.create_ddl)
+            "CREATE TABLE IF NOT EXISTS..."
+        """
+        return self.create_table.statement
+
+    @property
+    def tags_ddl(self) -> str:
+        """
+        All SET TAGS DDL as single string.
+
+        Returns:
+            Newline-separated SET TAGS statements.
+
+        Example:
+            >>> print(result.tags_ddl)
+            "ALTER TABLE ... SET TAGS...\\nALTER TABLE..."
+        """
+        return "\n".join(t.statement for t in self.tags)

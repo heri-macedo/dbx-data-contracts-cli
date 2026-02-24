@@ -1,0 +1,60 @@
+contract:
+  name: test_table_3_v1
+  version: 1.0.0
+  status: active
+
+catalog: test_catalog
+schema: test_schema
+
+ownership:
+  data_owner: Data Owner
+  bds: BDS
+  tds: TDS
+  purview_collection: TestCollection
+  portfolio: Portfolio_3
+  sub_domain: Sub_Domain_3
+  business_description: Test business description for table 3.
+
+table:
+  name: table_name_3
+  description: Test market data
+  refresh_frequency: daily
+  retention_days: 365
+
+  tags:
+    layer: Gold
+    classification: Classification_3
+    data_exchange: Data_Exchange
+
+  columns:
+    - name: position_date
+      type: date
+      description: Date of the position snapshot
+      nullable: false
+
+    - name: account_id
+      type: string
+      description: Trading account identifier
+      nullable: false
+      tags:
+        privacy: PII_ENCRYPTED
+
+    - name: instrument_code
+      type: string
+      description: Financial instrument identifier
+      nullable: false
+
+    - name: position_qty
+      type: long
+      description: Number of units held
+      nullable: false
+
+    - name: market_value
+      type: decimal(18,2)
+      description: Current market value of the position
+      nullable: false
+
+source:
+  type: database
+  name: test_source_system
+  database: test_database
