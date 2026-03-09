@@ -41,7 +41,7 @@ class Source(BaseModel):
         ... )
     """
 
-    model_config = {"frozen": True}
+    model_config = {"frozen": True, "extra": "forbid"}
 
     purview_fqn: Optional[str] = Field(
         default=None,

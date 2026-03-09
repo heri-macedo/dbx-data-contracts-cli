@@ -45,7 +45,7 @@ class TableTags(BaseModel):
         {"layer": "Layer_3", "classification": "Class_C"}
     """
 
-    model_config = {"frozen": True}
+    model_config = {"frozen": True, "extra": "forbid"}
 
     layer: Layer = Field(
         ...,
@@ -111,7 +111,7 @@ class Table(BaseModel):
         ... )
     """
 
-    model_config = {"frozen": True}
+    model_config = {"frozen": True, "extra": "forbid"}
 
     name: str = Field(
         ...,
