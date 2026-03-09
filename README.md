@@ -78,7 +78,7 @@ databricks_contracts/
 │   ├── git/                # SubprocessGitAdapter
 │   └── purview/            # PurviewCatalogApiClient, DryRunPurviewClient
 │
-├── models/                 # Pydantic models
+├── models/                 # Pydantic models (extra="forbid" on all models)
 │   ├── contracts/          # Contract, Table, Column, etc.
 │   ├── inputs/             # ApplyInput, ValidateInput, PublishInput, etc.
 │   ├── results/            # RunResult, TriggerResult, PublishResult, etc.
@@ -91,6 +91,31 @@ databricks_contracts/
 │   └── constants.py        # Constants
 │
 └── exceptions.py           # Custom exceptions
+```
+
+### Test Structure
+
+Tests mirror the source code structure for intuitive navigation:
+
+```
+tests/
+├── conftest.py                          # Global fixtures (sample_contract_data, etc.)
+├── unit/
+│   ├── test_models.py                   # General model tests
+│   ├── test_services.py                 # General service tests
+│   ├── models/
+│   │   └── contracts/
+│   │       ├── conftest.py              # Fixtures for contract models
+│   │       ├── test_table.py            # Table, TableTags (partitioned_by, extra fields)
+│   │       ├── test_column.py           # Column, ColumnTags (extra fields)
+│   │       ├── test_contract.py         # Contract, ContractInfo (extra fields)
+│   │       ├── test_ownership.py        # Ownership (extra fields)
+│   │       └── test_source.py           # Source (extra fields)
+│   └── services/
+│       └── contracts/
+│           ├── conftest.py              # Fixtures for builder service
+│           └── test_builder.py          # BuilderService (multi-partition DDL)
+└── integration/
 ```
 
 ## CLI Commands
@@ -120,7 +145,44 @@ databricks-contracts publish purview-all --env prod
 databricks-contracts version
 ```
 
-## Allowed Values (Enums)
+## Contract Schema
+
+### Table Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `table.name` | `string` | Yes | Table name (valid SQL identifier) |
+| `table.description` | `string` | Yes | Human-readable table description |
+| `table.refresh_frequency` | `enum` | Yes | Data refresh frequency |
+| `table.retention_days` | `int` | Yes | Data retention period in days |
+| `table.tags` | `object` | Yes | Table-level Unity Catalog tags |
+| `table.columns` | `list` | Yes | Column definitions (at least one) |
+| `table.partitioned_by` | `list[string]` | No | Column names for Delta table partitioning |
+
+The `partitioned_by` field is optional. When specified, all column names must exist in the `columns` list. The generated DDL will include a `PARTITIONED BY` clause:
+
+```sql
+CREATE TABLE IF NOT EXISTS `catalog`.`schema`.`table` (
+  `order_id` STRING NOT NULL,
+  `order_date` DATE NOT NULL
+)
+USING DELTA
+PARTITIONED BY (`order_date`)
+```
+
+### Strict Field Validation
+
+All contract models use Pydantic's `extra="forbid"` configuration. This means any unknown or misspelled field in the YAML will cause a validation error instead of being silently ignored.
+
+For example, using `partition_by` (typo) instead of `partitioned_by` will fail:
+
+```
+ValidationError: Extra inputs are not permitted [type=extra_forbidden, input_value=['order_date'], input_type=list]
+```
+
+This applies to all models: `Contract`, `ContractInfo`, `Table`, `TableTags`, `Column`, `ColumnTags`, `Ownership`, and `Source`.
+
+### Allowed Values (Enums)
 
 | Field | Allowed Values |
 |-------|----------------|

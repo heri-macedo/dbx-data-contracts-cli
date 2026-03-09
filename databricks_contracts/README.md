@@ -54,14 +54,14 @@ databricks_contracts/
 │       ├── api_client.py       # PurviewCatalogApiClient (Azure SDK)
 │       └── dry_run_client.py   # DryRunPurviewClient (preview)
 │
-├── models/                     # Pydantic Models
+├── models/                     # Pydantic Models (extra="forbid" on all contract models)
 │   ├── contracts/              # Domain models
 │   │   ├── contract.py         # Contract, ContractInfo
-│   │   ├── table.py            # Table, TableTags
+│   │   ├── table.py            # Table, TableTags (supports partitioned_by)
 │   │   ├── column.py           # Column, ColumnTags
 │   │   ├── ownership.py        # Ownership
 │   │   ├── source.py           # Source
-│   │   └── enums.py            # Layer, Portfolio, etc. 
+│   │   └── enums.py            # Layer, Portfolio, etc.
 │   ├── inputs/                 # Handler input DTOs
 │   │   ├── apply_input.py      # ApplyInput
 │   │   ├── validate_input.py   # ValidateInput
@@ -192,9 +192,11 @@ class SubprocessGitAdapter(ChangeDetectorPort):
 
 ### Models (Data Layer)
 
-- Immutable Pydantic models
-- Validation via Field constraints
+- Immutable Pydantic models with `frozen=True`
+- Strict validation: `extra="forbid"` rejects unknown/misspelled fields
+- Validation via Field constraints and model validators
 - No business logic
+- `Table.partitioned_by`: optional list of column names for Delta table partitioning (validated against column definitions)
 
 ## Usage Examples
 
