@@ -51,7 +51,7 @@ class Ownership(BaseModel):
         ... )
     """
 
-    model_config = {"frozen": True}
+    model_config = {"frozen": True, "extra": "forbid"}
 
     data_owner: str = Field(
         ...,

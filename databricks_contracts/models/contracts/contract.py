@@ -41,7 +41,7 @@ class ContractInfo(BaseModel):
         ... )
     """
 
-    model_config = {"frozen": True}
+    model_config = {"frozen": True, "extra": "forbid"}
 
     name: str = Field(
         ...,
@@ -82,7 +82,7 @@ class Contract(BaseModel):
         >>> print(contract.full_table_name) # "catalog.schema.table"
     """
 
-    model_config = {"frozen": True, "populate_by_name": True}
+    model_config = {"frozen": True, "extra": "forbid", "populate_by_name": True}
 
     contract: ContractInfo = Field(
         ...,
