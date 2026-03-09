@@ -128,6 +128,11 @@ class BuilderService:
             DDLKeywords.USING_DELTA,
         ]
 
+        # Add PARTITIONED BY if specified
+        if table.partitioned_by:
+            partition_cols = ", ".join(f"`{col}`" for col in table.partitioned_by)
+            ddl_parts.append(f"{DDLKeywords.PARTITIONED_BY} ({partition_cols})")
+
         # Add COMMENT if present
         if table.description:
             escaped = self._escape_string(table.description)

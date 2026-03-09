@@ -148,3 +148,99 @@ class TestBuilderService:
 
         assert "customer''s" in ddl
         assert "\\'" not in ddl
+
+    def test_build_with_partitioned_by(self, sample_project_config_data: dict) -> None:
+        """
+        Test that PARTITIONED BY clause is included in DDL when specified.
+
+        Args:
+            sample_project_config_data: Fixture with valid project config data.
+
+        Example:
+            >>> result = builder.build(contract)
+            >>> assert "PARTITIONED BY" in result.create_ddl
+        """
+        contract_data = {
+            "contract": {"name": "partitioned_v1", "version": "1.0.0", "status": "active"},
+            "catalog": "test_catalog",
+            "schema": "test_schema",
+            "ownership": {
+                "data_owner": "Data Owner",
+                "bds": "BDS",
+                "tds": "TDS",
+                "purview_collection": "TestCollection",
+                "portfolio": "Portfolio_1",
+                "sub_domain": "Sub_Domain_1",
+                "business_description": "Test partitioned table.",
+            },
+            "table": {
+                "name": "partitioned_table",
+                "description": "Table with partitioning",
+                "refresh_frequency": "daily",
+                "retention_days": 30,
+                "tags": {"layer": "Bronze"},
+                "columns": [
+                    {"name": "order_id", "type": "string", "description": "Order ID", "nullable": False},
+                    {"name": "order_date", "type": "date", "description": "Order date", "nullable": False},
+                ],
+                "partitioned_by": ["order_date"],
+            },
+        }
+
+        from databricks_contracts.config.project_config_model import ProjectConfig
+
+        contract = Contract.model_validate(contract_data)
+        project_config = ProjectConfig.model_validate(sample_project_config_data)
+
+        builder = BuilderService(environment="dev", project_config=project_config)
+        build_result = builder.build(contract)
+        ddl = build_result.create_ddl
+
+        assert "PARTITIONED BY (`order_date`)" in ddl
+
+    def test_build_without_partitioned_by(self, sample_project_config_data: dict) -> None:
+        """
+        Test that PARTITIONED BY clause is omitted when not specified.
+
+        Args:
+            sample_project_config_data: Fixture with valid project config data.
+
+        Example:
+            >>> result = builder.build(contract)
+            >>> assert "PARTITIONED BY" not in result.create_ddl
+        """
+        contract_data = {
+            "contract": {"name": "no_partition_v1", "version": "1.0.0", "status": "active"},
+            "catalog": "test_catalog",
+            "schema": "test_schema",
+            "ownership": {
+                "data_owner": "Data Owner",
+                "bds": "BDS",
+                "tds": "TDS",
+                "purview_collection": "TestCollection",
+                "portfolio": "Portfolio_1",
+                "sub_domain": "Sub_Domain_1",
+                "business_description": "Test table without partition.",
+            },
+            "table": {
+                "name": "no_partition_table",
+                "description": "Table without partitioning",
+                "refresh_frequency": "daily",
+                "retention_days": 30,
+                "tags": {"layer": "Gold"},
+                "columns": [
+                    {"name": "id", "type": "string", "description": "ID", "nullable": False},
+                ],
+            },
+        }
+
+        from databricks_contracts.config.project_config_model import ProjectConfig
+
+        contract = Contract.model_validate(contract_data)
+        project_config = ProjectConfig.model_validate(sample_project_config_data)
+
+        builder = BuilderService(environment="dev", project_config=project_config)
+        build_result = builder.build(contract)
+        ddl = build_result.create_ddl
+
+        assert "PARTITIONED BY" not in ddl
