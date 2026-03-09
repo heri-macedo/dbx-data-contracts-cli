@@ -504,7 +504,7 @@ When you **remove** a privacy tag from a column in your contract and republish, 
 | Repository | Description |
 |------------|-------------|
 | **Library repo** (`databricks-data-contracts`) | This library. Contains the CLI and core logic. |
-| **Domain repos** (e.g., `data-contracts-balcao`) | Team repositories that use this library. |
+| **Domain repos** (e.g., `data-contracts-sales`) | Team repositories that use this library. |
 
 ### Library Repository Secrets
 
@@ -631,7 +631,7 @@ jobs:
 #### 3. Repository Structure
 
 ```
-data-contracts-balcao/           # Domain repository
+data-contracts-my-domain/        # Domain repository
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml           # CI/CD workflow
@@ -650,9 +650,9 @@ data-contracts-balcao/           # Domain repository
 ```yaml
 # Domain identification (required)
 domain:
-  name: "financiamentos"               # Catalog base (Unity Catalog)
-  sub_domain: "imobiliario_dev"          # Schema (Unity Catalog)
-  description: "Test Domain"         # Description for documentation
+  name: "my_catalog"                   # Catalog base (Unity Catalog)
+  sub_domain: "my_schema"              # Schema (Unity Catalog)
+  description: "My Domain"            # Description for documentation
 ```
 
 #### 5. Databricks Bundle Configuration (`databricks.yml`)
@@ -670,22 +670,21 @@ bundle:
 
 # ✅ GOOD - Include subdomain in bundle name
 bundle:
-  name: data_contracts_balcao
+  name: data_contracts_sales
 ```
 
-| Subdomínio | Bundle Name |
-|------------|-------------|
-| Balcão | `data_contracts_balcao` |
-| Listado | `data_contracts_listado` |
-| Renda Fixa | `data_contracts_renda_fixa` |
-| Example domain | `data_contracts_example` |
-| Financiamento | `data_contracts_financiamento` |
+| Subdomain | Bundle Name |
+|-----------|-------------|
+| Sales | `data_contracts_sales` |
+| Finance | `data_contracts_finance` |
+| Marketing | `data_contracts_marketing` |
+| Operations | `data_contracts_operations` |
 
 **Example `databricks.yml`:**
 
 ```yaml
 bundle:
-  name: data_contracts_balcao  # Unique per subdomain!
+  name: data_contracts_sales  # Unique per subdomain!
 
 workspace:
   host: ${DATABRICKS_HOST}
@@ -769,17 +768,17 @@ Each subdomain repo deploys contracts to its own catalog. The Service Principal 
 
 | Permission | Resource | Why |
 |------------|----------|-----|
-| `USE CATALOG` | Domain catalog (e.g., `balcao_dev`) | Access catalog |
+| `USE CATALOG` | Domain catalog (e.g., `sales_dev`) | Access catalog |
 | `USE SCHEMA` | Domain schema | Access schema |
 | `CREATE TABLE` | Domain schema | Create tables |
 | `MODIFY` | Domain schema | Alter tables |
 | `READ VOLUME` | `/Volumes/shared/lib/wheels` | Install library |
 
 ```sql
--- Grant permissions for subdomain (example: balcao)
-GRANT USE CATALOG ON CATALOG balcao_dev TO `sp-databricks-dev`;
-GRANT USE SCHEMA ON SCHEMA balcao_dev.contracts TO `sp-databricks-dev`;
-GRANT CREATE TABLE, MODIFY ON SCHEMA balcao_dev.contracts TO `sp-databricks-dev`;
+-- Grant permissions for subdomain (example: sales)
+GRANT USE CATALOG ON CATALOG sales_dev TO `sp-databricks-dev`;
+GRANT USE SCHEMA ON SCHEMA sales_dev.contracts TO `sp-databricks-dev`;
+GRANT CREATE TABLE, MODIFY ON SCHEMA sales_dev.contracts TO `sp-databricks-dev`;
 
 -- Also needs read access to shared lib volume
 GRANT READ VOLUME ON VOLUME shared.lib.wheels TO `sp-databricks-dev`;
@@ -795,4 +794,3 @@ GRANT READ VOLUME ON VOLUME shared.lib.wheels TO `sp-databricks-dev`;
 ## Documentation
 
 - [Library Architecture](databricks_contracts/README.md)
-- [Future Features](TODO.md)
