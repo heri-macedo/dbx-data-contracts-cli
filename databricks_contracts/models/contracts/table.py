@@ -21,7 +21,7 @@ Example:
 
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from databricks_contracts.models.contracts.column import Column
 from databricks_contracts.models.contracts.enums import Classification, Layer, RefreshFrequency
@@ -97,6 +97,7 @@ class Table(BaseModel):
         retention_days: Data retention period in days.
         tags: Table-level Unity Catalog tags.
         columns: List of column definitions (at least one required).
+        partitioned_by: Optional list of column names for Delta table partitioning.
 
     Example:
         >>> table = Table(
@@ -106,6 +107,7 @@ class Table(BaseModel):
         ...     retention_days=90,
         ...     tags=TableTags(layer=Layer.LAYER_2),
         ...     columns=[...],
+        ...     partitioned_by=["order_date"],
         ... )
     """
 
@@ -140,3 +142,30 @@ class Table(BaseModel):
         min_length=1,
         description="List of column definitions (at least one required)",
     )
+    partitioned_by: Optional[list[str]] = Field(
+        default=None,
+        description="Column names for Delta table partitioning",
+        examples=[["order_date"], ["year", "month"]],
+    )
+
+    @model_validator(mode="after")
+    def validate_partition_columns(self) -> "Table":
+        """
+        Validate that partition columns exist in the table column definitions.
+
+        Raises:
+            ValueError: If any partition column is not defined in ``columns``.
+
+        Example:
+            >>> table = Table(
+            ...     name="orders",
+            ...     columns=[Column(name="id", type="STRING", description="ID")],
+            ...     partitioned_by=["missing_col"],
+            ... )  # raises ValueError
+        """
+        if self.partitioned_by:
+            column_names = {col.name for col in self.columns}
+            invalid = [col for col in self.partitioned_by if col not in column_names]
+            if invalid:
+                raise ValueError(f"Partition columns not found in table columns: {invalid}")
+        return self

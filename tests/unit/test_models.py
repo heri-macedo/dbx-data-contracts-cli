@@ -50,6 +50,51 @@ class TestContract:
 
         assert contract.full_table_name == "test_catalog.test_schema.test_table"
 
+    def test_contract_parse_valid_with_partitioned_by(self, sample_contract_data: dict) -> None:
+        """
+        Test that valid contract with partitioned_by parses correctly.
+
+        Args:
+            sample_contract_data: Fixture with valid contract data.
+
+        Example:
+            >>> contract = Contract.model_validate(data)
+            >>> assert contract.table.partitioned_by == ["id"]
+        """
+        sample_contract_data["table"]["partitioned_by"] = ["id"]
+        contract = Contract.model_validate(sample_contract_data)
+
+        assert contract.table.partitioned_by == ["id"]
+
+    def test_contract_parse_valid_without_partitioned_by(self, sample_contract_data: dict) -> None:
+        """
+        Test that contract without partitioned_by defaults to None.
+
+        Args:
+            sample_contract_data: Fixture with valid contract data.
+
+        Example:
+            >>> contract = Contract.model_validate(data)
+            >>> assert contract.table.partitioned_by is None
+        """
+        contract = Contract.model_validate(sample_contract_data)
+
+        assert contract.table.partitioned_by is None
+
+    def test_contract_partitioned_by_invalid_column(self, sample_contract_data: dict) -> None:
+        """
+        Test that partitioned_by with non-existent column raises ValidationError.
+
+        Args:
+            sample_contract_data: Fixture with valid contract data.
+        """
+        from pydantic import ValidationError
+
+        sample_contract_data["table"]["partitioned_by"] = ["non_existent_column"]
+
+        with pytest.raises(ValidationError, match="Partition columns not found in table columns"):
+            Contract.model_validate(sample_contract_data)
+
     def test_contract_missing_required_field(self, sample_contract_data: dict) -> None:
         """
         Test that missing required fields raise ValidationError.
