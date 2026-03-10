@@ -25,6 +25,9 @@ table:
     layer: Bronze
     classification: Classification_1
 
+  partitioned_by:
+    - txn_ref_dt
+
   columns:
     - name: txn_ref_dt
       type: date

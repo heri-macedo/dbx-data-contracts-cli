@@ -94,6 +94,37 @@ targets:
 | **DEV** | `/Volumes/shared/lib/wheels/databricks_contracts-0.0.0.dev0-py3-none-any.whl` | Latest from `develop` branch (auto-updated) |
 | **PROD** | `/Volumes/shared/lib/wheels/databricks_contracts-X.Y.Z-py3-none-any.whl` | Specific release version |
 
+## Contract YAML Reference
+
+### Optional: `partitioned_by`
+
+You can specify Delta table partitioning in your contract YAML using the `partitioned_by` field. All column names listed must exist in the `columns` section:
+
+```yaml
+table:
+  name: my_table
+  description: My table description
+  refresh_frequency: daily
+  retention_days: 30
+  tags:
+    layer: Bronze
+
+  partitioned_by:
+    - txn_ref_dt
+
+  columns:
+    - name: txn_ref_dt
+      type: date
+      description: Transaction reference date
+      nullable: false
+```
+
+This generates: `PARTITIONED BY (\`txn_ref_dt\`)` in the DDL.
+
+### Strict Field Validation
+
+All contract models reject unknown fields. Typos like `partition_by` instead of `partitioned_by` will fail validation with a clear error message.
+
 ## datacontract.config.yaml
 
 This file is **required** in the repository root. It defines:

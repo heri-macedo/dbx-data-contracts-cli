@@ -84,7 +84,7 @@ class Column(BaseModel):
         ... )
     """
 
-    model_config = {"frozen": True}
+    model_config = {"frozen": True, "extra": "forbid"}
 
     name: str = Field(
         ...,

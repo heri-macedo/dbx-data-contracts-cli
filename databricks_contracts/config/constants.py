@@ -15,6 +15,7 @@ class DDLKeywords:
     SET_TAGS = "SET TAGS"
     ALTER_COLUMN = "ALTER COLUMN"
     NOT_NULL = "NOT NULL"
+    PARTITIONED_BY = "PARTITIONED BY"
 
 
 class FileNames:
