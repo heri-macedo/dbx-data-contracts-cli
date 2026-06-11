@@ -60,13 +60,13 @@ class Layer(str, Enum):
 
     Attributes:
         ADMIN: Configuration/Admin layer.
-        LAYER_1: Raw data layer.
-        LAYER_2: Cleansed data layer.
-        LAYER_3: Business-ready data layer.
+        BRONZE: Raw data layer.
+        SILVER: Cleansed data layer.
+        GOLD: Business-ready data layer.
 
     Example:
-        >>> layer = Layer.LAYER_3
-        >>> print(layer.value)  # "Layer_3"
+        >>> layer = Layer.GOLD
+        >>> print(layer.value)  # "Gold"
     """
 
     ADMIN = "Admin"
@@ -83,6 +83,7 @@ class Classification(str, Enum):
         CLASSIFICATION_1: Classification 1.
         CLASSIFICATION_2: Classification 2.
         CLASSIFICATION_3: Classification 3.
+        CLASSIFICATION_4: Classification 4.
 
     Example:
         >>> classification = Classification.CLASSIFICATION_1
@@ -154,12 +155,12 @@ class Privacy(str, Enum):
     Privacy/PII tags for column-level governance.
 
     Attributes:
-        PII_A: PII data that should be hidden.
-        PII_B: PII data that is encrypted.
+        PII_HIDDEN: PII data that should be hidden.
+        PII_ENCRYPTED: PII data that is encrypted.
 
     Example:
-        >>> privacy = Privacy.PII_A
-        >>> print(privacy.value)  # "PII_A"
+        >>> privacy = Privacy.PII_HIDDEN
+        >>> print(privacy.value)  # "PII_HIDDEN"
     """
 
     PII_HIDDEN = "PII_HIDDEN"

@@ -61,6 +61,18 @@ class ColumnTags(BaseModel):
         return result
 
 
+class ColumnConstraints(BaseModel):
+    """CHECK constraints for a column."""
+
+    model_config = {"frozen": True, "extra": "forbid"}
+
+    check: Optional[str] = Field(
+        default=None,
+        description="SQL boolean expression for CHECK constraint",
+        examples=["age > 0 AND age < 150"],
+    )
+
+
 class Column(BaseModel):
     """
     Column definition within a table.
@@ -73,6 +85,7 @@ class Column(BaseModel):
         description: Human-readable description of the column.
         nullable: Whether column accepts NULL values.
         tags: Optional column-level Unity Catalog tags.
+        constraints: Optional CHECK constraints.
 
     Example:
         >>> column = Column(
@@ -80,7 +93,7 @@ class Column(BaseModel):
         ...     type="STRING",
         ...     description="Customer email address",
         ...     nullable=True,
-        ...     tags=ColumnTags(privacy=Privacy.PII_A),
+        ...     tags=ColumnTags(privacy=Privacy.PII_HIDDEN),
         ... )
     """
 
@@ -108,4 +121,8 @@ class Column(BaseModel):
     tags: Optional[ColumnTags] = Field(
         default=None,
         description="Column-level Unity Catalog tags",
+    )
+    constraints: Optional[ColumnConstraints] = Field(
+        default=None,
+        description="Optional CHECK constraints for the column",
     )

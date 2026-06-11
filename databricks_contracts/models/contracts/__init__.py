@@ -9,7 +9,7 @@ Example:
     >>> print(contract.table.name)
 """
 
-from databricks_contracts.models.contracts.column import Column, ColumnTags
+from databricks_contracts.models.contracts.column import Column, ColumnConstraints, ColumnTags
 from databricks_contracts.models.contracts.contract import Contract, ContractInfo
 from databricks_contracts.models.contracts.enums import (
     Classification,
@@ -30,6 +30,7 @@ __all__ = [
     "Table",
     "TableTags",
     "Column",
+    "ColumnConstraints",
     "ColumnTags",
     "Ownership",
     "Source",

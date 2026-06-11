@@ -18,6 +18,7 @@ Example:
 from pydantic import Field
 
 from databricks_contracts.models.statements.base import BaseStatement
+from databricks_contracts.utils.sql import escape_sql_literal
 
 
 class TagStatement(BaseStatement):
@@ -100,12 +101,7 @@ class TagStatement(BaseStatement):
             "ALTER TABLE `cat`.`sch`.`tbl` SET TAGS ('key' = 'value');"
         """
 
-        def _escape_sql_literal(value: str) -> str:
-            # Escape for SQL single-quoted literals (portable): ' -> ''
-            # Normalize newlines to spaces to avoid multi-line SQL.
-            return value.replace("'", "''").replace("\n", " ")
-
-        tags_sql = ", ".join(f"'{key}' = '{_escape_sql_literal(value)}'" for key, value in self.tags.items())
+        tags_sql = ", ".join(f"'{key}' = '{escape_sql_literal(value)}'" for key, value in self.tags.items())
 
         if self.is_table_level:
             return f"ALTER TABLE {self.full_table_name} SET TAGS ({tags_sql});"

@@ -81,6 +81,14 @@ class RunResult(BaseModel):
         description="Error message if operation failed",
         examples=["Contract not found", "Invalid column type"],
     )
+    alter_ddl: list[str] = Field(
+        default_factory=list,
+        description="Generated ALTER TABLE DDL statements (for schema evolution)",
+    )
+    is_evolution: bool = Field(
+        default=False,
+        description="Whether this was a schema evolution (ALTER) rather than creation (CREATE)",
+    )
     warnings: list[str] = Field(
         default_factory=list,
         description="Non-fatal warnings (e.g. tags that could not be applied)",
@@ -88,15 +96,8 @@ class RunResult(BaseModel):
 
     @property
     def statements_count(self) -> int:
-        """
-        Count total DDL statements generated.
-
-        Returns:
-            Number of DDL statements (1 CREATE + N tags).
-
-        Example:
-            >>> result.statements_count
-            3  # 1 CREATE + 2 TAG statements
-        """
+        """Count total DDL statements generated."""
+        if self.is_evolution:
+            return len(self.alter_ddl) + len([s for s in self.tags_ddl.split(";") if s.strip()])
         tags_count = len([s for s in self.tags_ddl.split(";") if s.strip()])
         return 1 + tags_count
