@@ -12,6 +12,9 @@ pip install git+https://github.com/your-org/databricks_data_contracts.git@main
 pip install -e .
 ```
 
+> Setting up a new workspace from scratch (service principal, Unity Catalog grants,
+> SQL warehouse, CI/CD secrets)? See [docs/SETUP.md](docs/SETUP.md).
+
 ## Quick Start
 
 ```bash
