@@ -72,11 +72,7 @@ class TableTags(BaseModel):
             >>> tags.to_dict()
             {"layer": "Layer_3"}
         """
-        result: dict[str, str] = (
-            {"layer": self.layer.layer} if hasattr(self.layer, "layer") else {"layer": self.layer.value}
-        )
-        # Wait, I should just use self.layer.value
-        result = {"layer": self.layer.value}
+        result: dict[str, str] = {"layer": self.layer.value}
         if self.classification:
             result["classification"] = self.classification.value
         if self.data_exchange:
@@ -151,19 +147,21 @@ class Table(BaseModel):
     @model_validator(mode="after")
     def validate_partition_columns(self) -> "Table":
         """
-        Validate that partition columns exist in the table column definitions.
+        Validate partition columns: must exist, no duplicates, no empty list.
 
         Raises:
-            ValueError: If any partition column is not defined in ``columns``.
-
-        Example:
-            >>> table = Table(
-            ...     name="orders",
-            ...     columns=[Column(name="id", type="STRING", description="ID")],
-            ...     partitioned_by=["missing_col"],
-            ... )  # raises ValueError
+            ValueError: If any partition column is not defined in ``columns``,
+                if duplicate partition column names are specified,
+                or if an empty list is provided.
         """
-        if self.partitioned_by:
+        if self.partitioned_by is not None:
+            if len(self.partitioned_by) == 0:
+                raise ValueError("partitioned_by must not be an empty list; use None to omit partitioning")
+
+            duplicates = [col for col in self.partitioned_by if self.partitioned_by.count(col) > 1]
+            if duplicates:
+                raise ValueError(f"Duplicate partition column names: {sorted(set(duplicates))}")
+
             column_names = {col.name for col in self.columns}
             invalid = [col for col in self.partitioned_by if col not in column_names]
             if invalid:

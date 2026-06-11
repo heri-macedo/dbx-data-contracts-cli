@@ -45,6 +45,10 @@ class Settings(BaseSettings):
         default=None,
         description="Service principal client secret",
     )
+    DATABRICKS_WAREHOUSE_ID: Optional[str] = Field(
+        default=None,
+        description="SQL warehouse ID for table introspection via Statement Execution API",
+    )
 
     # Microsoft Purview connection
     PURVIEW_ACCOUNT_NAME: Optional[str] = Field(

@@ -13,5 +13,6 @@ Example:
 
 from databricks_contracts.services.contracts.builder import BuilderService
 from databricks_contracts.services.contracts.loader import ContractLoaderService
+from databricks_contracts.services.contracts.schema_differ import SchemaDifferService
 
-__all__ = ["ContractLoaderService", "BuilderService"]
+__all__ = ["ContractLoaderService", "BuilderService", "SchemaDifferService"]

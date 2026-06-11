@@ -9,6 +9,8 @@ __pycache__/
 scratch/**
 !scratch/README.md
 coverage.xml
+.coverage
+.mutmut-cache
 .env
 .instructions/**
 .vscode/**

@@ -23,13 +23,11 @@ from databricks_contracts.models.contracts.table import Table, TableTags
 class TestTablePartitionedBy:
     """Tests for Table.partitioned_by field validation and edge cases."""
 
-    def test_partitioned_by_with_empty_list(self, sample_table_data: dict) -> None:
+    def test_partitioned_by_with_empty_list_raises(self, sample_table_data: dict) -> None:
         """
-        Test that partitioned_by with an empty list is accepted and stored as-is.
+        Test that partitioned_by with an empty list is rejected.
 
-        An empty list is a valid value for partitioned_by — it means the user
-        explicitly declared partitioning but with no columns. Pydantic should
-        accept it without raising a validation error.
+        An empty list is semantically wrong — use None to omit partitioning.
 
         Args:
             sample_table_data: Valid table dictionary from fixture.
@@ -37,11 +35,9 @@ class TestTablePartitionedBy:
         # Arrange
         sample_table_data["partitioned_by"] = []
 
-        # Act
-        table = Table.model_validate(sample_table_data)
-
-        # Assert
-        assert table.partitioned_by == []
+        # Act & Assert
+        with pytest.raises(ValidationError, match="empty list"):
+            Table.model_validate(sample_table_data)
 
     def test_partitioned_by_with_multiple_valid_columns(
         self,
@@ -66,17 +62,12 @@ class TestTablePartitionedBy:
         assert table.partitioned_by == ["order_date", "customer_name"]
         assert len(table.partitioned_by) == 2
 
-    def test_partitioned_by_with_duplicate_column_names(
+    def test_partitioned_by_with_duplicate_column_names_raises(
         self,
         sample_table_data: dict,
     ) -> None:
         """
-        Test that partitioned_by with duplicate column names is accepted by the model.
-
-        The Table model does not currently enforce uniqueness in the partitioned_by
-        list. This test documents the current behavior — duplicates are stored as-is.
-        If uniqueness enforcement is added later, this test should be updated to
-        expect a ValidationError.
+        Test that partitioned_by with duplicate column names is rejected.
 
         Args:
             sample_table_data: Valid table dictionary from fixture.
@@ -84,11 +75,9 @@ class TestTablePartitionedBy:
         # Arrange
         sample_table_data["partitioned_by"] = ["order_date", "order_date"]
 
-        # Act
-        table = Table.model_validate(sample_table_data)
-
-        # Assert
-        assert table.partitioned_by == ["order_date", "order_date"]
+        # Act & Assert
+        with pytest.raises(ValidationError, match="Duplicate partition column names"):
+            Table.model_validate(sample_table_data)
 
 
 class TestTableExtraFieldsForbidden:
