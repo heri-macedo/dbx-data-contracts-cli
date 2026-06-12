@@ -13,7 +13,7 @@ concurrency:
 env:
   PYTHON_VERSION: '3.11'
   WHEEL_VOLUME_PATH: 'dbfs:/Volumes/shared/lib/wheels'
-  DATABRICKS_CLI_VERSION: '0.288.0'
+  DATABRICKS_CLI_VERSION: '0.299.1'
 
 jobs:
   # ===========================================================================
